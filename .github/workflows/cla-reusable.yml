@@ -1,0 +1,63 @@
+# Reusable CLA Assistant workflow
+#
+# Single source of truth for CLA enforcement across audiflow repos.
+# Caller workflows in each repo / long-lived branch invoke this via
+# `uses: audiflow/.github/.github/workflows/cla-reusable.yml@main`.
+#
+# Allowlist updates and action version bumps land here once and apply
+# to every consumer immediately, avoiding cherry-pick fan-out across
+# version branches that never merge back to main.
+#
+# No untrusted input is used in run: commands -- all handling is
+# delegated to the GitHub Action which processes inputs safely.
+name: CLA Assistant (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      cla-document-url:
+        description: "URL of the CLA document presented to contributors. Defaults to CLA.md on the caller repo's default branch."
+        type: string
+        required: false
+        default: ""
+      allowlist:
+        description: "Comma-separated GitHub logins exempt from signing."
+        type: string
+        required: false
+        default: "reedom,dependabot[bot],github-actions[bot],audiflow-ci-bot[bot],claude"
+    secrets:
+      CLA_TOKEN:
+        description: "PAT with write access to audiflow/.github for signature commits."
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CLA Assistant
+        if: |
+          github.event_name == 'pull_request_target'
+          || (github.event_name == 'issue_comment' && github.event.issue.pull_request)
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_TOKEN }}
+        with:
+          path-to-signatures: "signatures/cla.json"
+          path-to-document: ${{ inputs.cla-document-url != '' && inputs.cla-document-url || format('https://github.com/{0}/blob/main/CLA.md', github.repository) }}
+          branch: "main"
+          allowlist: ${{ inputs.allowlist }}
+          remote-organization-name: "audiflow"
+          remote-repository-name: ".github"
+          custom-notsigned-prcomment: >
+            Thank you for your contribution! Before we can merge this PR, you need
+            to sign the Contributor License Agreement (CLA.md in this repository).
+            To sign, please comment on this PR with exactly:
+            "I have read the CLA Document and I hereby sign the CLA"
+          custom-pr-sign-comment: "I have read the CLA Document and I hereby sign the CLA"
+          lock-pullrequest-aftermerge: false

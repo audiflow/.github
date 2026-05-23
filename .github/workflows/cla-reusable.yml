@@ -24,7 +24,7 @@ on:
         description: "Comma-separated GitHub logins exempt from signing."
         type: string
         required: false
-        default: "reedom,dependabot[bot],github-actions[bot],audiflow-ci-bot[bot],claude"
+        default: "reedom,dependabot[bot],github-actions[bot],audiflow-ci-bot[bot],ecc-tools[bot],claude"
     secrets:
       CLA_TOKEN:
         description: "PAT with write access to audiflow/.github for signature commits."
